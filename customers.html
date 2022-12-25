@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nadav's Library</title>
+    <!-- <script src="scripts\customer.js"></script> -->
+    <!-- Exit (X) Button (Popup Windows) -->
+    <link rel="icon" type="image/x-icon" href="images/book_icon.jpg">
+    <!-- Css stylesheet -->
+    <link rel="stylesheet" href="styles\customers.css">
+    <!-- Axios -->
+    <script src="https://unpkg.com/axios@1.1.2/dist/axios.min.js"></script>
+    <!-- FavIcon -->
+    <link rel="icon" type="image/x-icon" href="images/book_icon.jpg">
+    <!-- Toastify -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <!-- Bootstrap -->
+    <!-- CSS only -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+
+
+
+
+<body style="background-color: cornsilk;">
+
+    <!-- NavBar -->
+    <ul>
+        <li><a class="active" href="index.html"><img style="width: 40px; ;" src="images\house2.jpg" alt="Home"></a>
+        </li>
+        <li><a href="customers.html" style="text-decoration: underline;">Customers</a></li>
+        <li><a href="books.html">Books</a></li>
+        <li><a href="loans.html">Loans</a></li>
+        <li><a href="#" id="button">Add Customer</a></li><!-- Add Customer Button -->
+    </ul>
+    <input id="search" class="searchBar" placeholder="Search Customer By Name/City" onkeyup="buildDisplay()">
+    <!--Search Bar-->
+    <div class='goBack' id="backButton"></div><!--Back Button-->
+
+    <!-- PopUp Window (Add Customer) -->
+    <div class="popup">
+        <div class="popup-content">
+            <img src="images\x.png" alt="close" class="close"> <!--Close Button-->
+            <!-- Button to activate unactive customers - customers that were here before-->
+            <a onclick="deactiveMenu()" class="btn btn-success" style="margin-bottom: 2%;">Already Our Customer?</a>
+            <input type="text" class='popupInput' placeholder="Name" id="customer_name">
+            <input type="text" class='popupInput' placeholder="City" id="customer_city">
+            <input type="number" class='popupInput' placeholder="Age" id="customer_age">
+            <a onclick="addData()" class="btn btn-success" style="margin-top: 1%;">Add</a>
+        </div>
+    </div>
+
+    <!-- Display Div -->
+    <div class='allCards' id="customerDisplay"></div>
+
+    <script>
+        const MY_SERVER_LOANS = 'https://library-zgvq.onrender.com/loans/'
+        const MY_SERVER_CUSTOMERS = 'https://library-zgvq.onrender.com/customers/'
+        const MY_SERVER_BOOKS = 'https://library-zgvq.onrender.com/books/'
+
+
+        // GET data from server
+        const loadData = async () => {
+            customers = await axios.get(MY_SERVER_CUSTOMERS)
+            buildDisplay()
+        }
+
+        loadData()
+
+        /////////////////////// Build the display////////////////////////
+
+        ////// Search By Feature - customer name and city
+        const buildDisplay = () => {
+            backButton.innerHTML = "" // Set The backButton Div to nothing because there is nowhere to go (the button Was filled in the seactivateMenu Function)
+            customerDisplay.innerHTML = customers.data.filter(x => (x.name.toLowerCase().includes(search.value.toLowerCase()) || (x.city.toLowerCase().includes(search.value.toLowerCase()))) && x.is_active === 'true').map((customer, i) => `
+                <div class='customerCard'>
+                <div style="font-size: 30px;">${customer.name}</div>
+                <div style="font-size: 20px">Address: ${customer.city}</div>
+                <div style="font-size: 20px">Age: ${customer.age}</div>
+                <div id='bookLoaned'></div>
+                <button class="btn btn-success" style="width: 49.4%; margin-top: 1%" onclick="loanBook('${customer.name}')"> Loan A Book </button>
+                <button class="btn btn-danger" style="width: 49.4%; margin-top: 1%" onclick="delCustomer('${customer.id}')"> Delete Customer </button>
+                </div>`).join("")
+
+        }
+
+        /////////////////////////////////// Display Books available To Loan ////////////////////////////////
+
+        const BooksDisplay = async () => {
+            books = await axios.get(MY_SERVER_BOOKS)
+            search.placeholder = 'Search Book By Name/Author'
+            search.onkeyup = BooksDisplay
+            customerDisplay.innerHTML = books.data.filter(x => (x.name.toLowerCase().includes(search.value.toLowerCase()) || x.author.toLowerCase().includes(search.value.toLowerCase())) && x.is_active === 'true').map(book => `
+            <div class='customerCard'>
+                <div style="font-size: 30px;">${book.name}</div>
+                <div style="font-size: 20px">Author: ${book.author}</div>
+                <div style="font-size: 20px">Year Published: ${book.year_published}</div>
+                <button  class="btn btn-success"  style='margin-top: 1%' onclick="CustomerloanBook( '${book.name}', ${book.book_type})"> Loan A Book  </button>
+                </div>`).join("")
+
+        }
+
+        ////////////////////////////////// Display Only UnActive Customers //////////////////
+
+        const deactiveMenu = () => {
+
+            if (customers.data.filter(x => x.is_active == 'false').length == 0) {
+                backButton.innerHTML = `<button class='btn btn-secondary' onclick='buildDisplay()'>Go Back</button>`
+                customerDisplay.innerHTML = "<div > <b>There Are No Past Customers </b> </div>"
+                document.querySelector(".popup").style.display = "none"
+            }
+            else {
+                backButton.innerHTML = `<button class='btn btn-secondary' onclick='buildDisplay()'>Go Back</button>`
+                customerDisplay.innerHTML = customers.data.filter(x => x.is_active === 'false').map((customer, i) => `
+                        <div class='customerCard'>
+                        <div style="font-size: 30px;">${customer.name}</div>
+                        <div style="font-size: 20px">Address:${customer.city}</div>
+                        <div style="font-size: 20px">Age:${customer.age}</div>
+                        <button class="btn btn-success" style="width: 49.4%;"  onclick="activateCustomer('${customer.id}')"> Activate Customer </button>
+                        </div>`).join("")
+                document.querySelector(".popup").style.display = "none"
+            }
+        }
+
+
+
+        ////////////////////////////// Loan A Book ////////////////////////////
+
+        let loan_cust_name = ""  // Variable for The customer name (The loaner)
+        const loanBook = (cust_name) => {
+            BooksDisplay()
+            loan_cust_name = cust_name
+
+        }
+        const CustomerloanBook = (name, type) => {
+            if (type == 1) {
+                console.log("type 1")
+                book_type_one()
+            }
+            else if (type == 2) {
+                console.log("type 2")
+                book_type_two()
+            }
+            else if (type == 3) {
+                console.log("type 3")
+                book_type_three()
+            }
+
+            const post_loan = () => { axios.post(MY_SERVER_LOANS, { customer_name: loan_cust_name, book_name: name }) }
+            setTimeout(post_loan, 3000)
+        }
+
+        ///////////////////////////////// Activate Customer /////////////////////////////////
+
+        const activateCustomer = async (id) => {
+            console.log(id)
+            await axios.put(MY_SERVER_CUSTOMERS + id, { is_active: "true" })
+            loadData()
+
+        }
+
+        //////////////////////////// Delete (Deactivate) Customer ///////////////////////////
+        const delCustomer = async (id) => {
+            const res = await axios.delete(MY_SERVER_CUSTOMERS + id).then((res) => console.log(res.data))
+            loadData()
+        }
+        ///////////////////////////////// Post (Create) Add Customer + Validation //////////////////////////////////
+        const addData = () => {
+            //////////////////// Input Validation - first part checks if the field is empty, the second checks if it's the right type of input/ bigget than 0 in the age
+            if ((customer_name.value.length > 1 && parseInt(customer_name.value) != customer_name.value) &&
+                (customer_city.value.length > 1 && parseInt(customer_city.value) != customer_city.value) &&
+                (customer_age.value.length > 1 && customer_age.value > 0)) {
+                axios.post(MY_SERVER_CUSTOMERS, { name: customer_name.value, city: customer_city.value, age: customer_age.value }).then((res) => console.log(res.data))
+                loadData()
+            }
+            else {
+                // Checks Name Input
+                if ((customer_name.value.length < 1 || parseInt(customer_name.value) == customer_name.value)) {
+                    customer_name_wrong()
+                }
+                // Checks City Input
+                if ((customer_city.value.length < 1 || parseInt(customer_name.value) == customer_name.value)) {
+                    customer_city_wrong()
+                }
+                // Checks Age Input
+                if ((!customer_age.value.length > 1 || !customer_age.value > 0)) {
+                    customer_age_wrong()
+                }
+
+            }
+
+        }
+
+        ////////////////////////// Popup Window - Add Customer ////////////////////////////////////
+        document.getElementById("button").addEventListener("click", function () {
+            document.querySelector(".popup").style.display = "flex";
+        })
+
+        document.querySelector(".close").addEventListener("click", function () {
+            document.querySelector(".popup").style.display = "none";
+        })
+
+
+        ////////////////////////////// Set The Dates - Loan ///////////////////////////
+        let loan_date = new Date(); // The Date Today init
+
+        let loan_type_one = new Date(loan_date.setDate(loan_date.getDate() + 10)) // The Date In 10 Days
+        loan_type_one = loan_type_one.getDate() + "-" + (loan_type_one.getMonth() + 1) + "-" + loan_type_one.getFullYear() // The Date In 10 Days Fomrated
+
+        let loan_type_two = new Date(loan_date.setDate(loan_date.getDate() - 5))// The Date In 5 Days
+        loan_type_two = loan_type_two.getDate() + "-" + (loan_type_two.getMonth() + 1) + "-" + loan_type_two.getFullYear()// The Date In 5 Days Formated
+
+        let loan_type_three = new Date(loan_date.setDate(loan_date.getDate() - 3))// The Date In 2 Days
+        loan_type_three = loan_type_three.getDate() + "-" + (loan_type_three.getMonth() + 1) + "-" + loan_type_three.getFullYear()// The Date In 2 Days Formated
+
+        loan_date = new Date(loan_date.setDate(loan_date.getDate() - 2)) // The Date Today
+        loan_date = loan_date.getDate() + "-" + (loan_date.getMonth() + 1) + "-" + loan_date.getFullYear() // The Date Today Formateds
+
+        //////////////////////////////Toastify Messages////////////////////////////////////////
+
+        // Message ig there are no unactive customers
+        const CustomerActive = () => {
+            Toastify({
+                text: "Customer Activated",
+                duration: 1000,
+                newWindow: true,
+                close: true,
+                gravity: "buttom", // `top` or `bottom`
+                position: "center", // `left`, `center` or `right`
+                stopOnFocus: true, // Prevents dismissing of toast on hover
+                style: {
+                    background: "linear-gradient(to right, #00b09b, #96c93d)",
+                },
+                onClick: function () { } // Callback after click
+            }).showToast();
+        }
+
+        ///////// Wrong Customer Name ////////
+        const customer_name_wrong = () => {
+            Toastify({
+                text: "Please Enter A Valid Name",
+                duration: 3000,
+                newWindow: true,
+                close: true,
+                gravity: "buttom", // `top` or `bottom`
+                position: "center", // `left`, `center` or `right`
+                stopOnFocus: true, // Prevents dismissing of toast on hover
+                style: {
+                    background: "linear-gradient(to right, #990033 0%, #ff0000 100%)",
+                },
+                onClick: function () { } // Callback after click
+            }).showToast();
+        }
+
+        ///////// Wrong Customer Name ////////
+        const customer_city_wrong = () => {
+            Toastify({
+                text: "Please Enter A Valid City",
+                duration: 3000,
+                destination: "https://github.com/apvarun/toastify-js",
+                newWindow: true,
+                close: true,
+                gravity: "buttom", // `top` or `bottom`
+                position: "center", // `left`, `center` or `right`
+                stopOnFocus: true, // Prevents dismissing of toast on hover
+                style: {
+                    background: "linear-gradient(to right, #990033 0%, #ff0000 100%)",
+                },
+                onClick: function () { } // Callback after click
+            }).showToast();
+        }
+
+        ///////// Wrong Customer Name ////////
+        const customer_age_wrong = () => {
+            Toastify({
+                text: "Please Enter A Valid Age",
+                duration: 3000,
+                newWindow: true,
+                close: true,
+                gravity: "buttom", // `top` or `bottom`
+                position: "center", // `left`, `center` or `right`
+                stopOnFocus: true, // Prevents dismissing of toast on hover
+                style: {
+                    background: "linear-gradient(to right, #990033 0%, #ff0000 100%)",
+                },
+                onClick: function () { } // Callback after click
+            }).showToast();
+        }
+
+
+        ////// Book Type 1 (10 days to return) /////
+        const book_type_one = () => {
+            console.log(loan_type_one)
+            Toastify({
+                text: `The Return Date is: ${loan_type_one}`,
+                duration: 5000,
+                newWindow: true,
+                close: true,
+                gravity: "buttom", // `top` or `bottom`
+                position: "center", // `left`, `center` or `right`
+                stopOnFocus: true, // Prevents dismissing of toast on hover
+                style: {
+                    background: "linear-gradient(to right, #00b09b, #96c93d)",
+                },
+                onClick: function () { } // Callback after click
+            }).showToast();
+            loadData()
+        }
+
+        /////// Book Type 2 (5 days to return) /////////
+        const book_type_two = () => {
+            Toastify({
+                text: `The Return Date is: ${loan_type_two}`,
+                duration: 5000,
+                newWindow: true,
+                close: true,
+                gravity: "buttom", // `top` or `bottom`
+                position: "center", // `left`, `center` or `right`
+                stopOnFocus: true, // Prevents dismissing of toast on hover
+                style: {
+                    background: "linear-gradient(to right, #00b09b, #96c93d)",
+                },
+                onClick: function () { } // Callback after click
+            }).showToast();
+            loadData()
+        }
+
+        ////////// Book Type 3 (2 days to return) /////////
+        const book_type_three = () => {
+            Toastify({
+                text: `The Return Date is: ${loan_type_three}`,
+                duration: 5000,
+                destination: "https://github.com/apvarun/toastify-js",
+                newWindow: true,
+                close: true,
+                gravity: "buttom", // `top` or `bottom`
+                position: "center", // `left`, `center` or `right`
+                stopOnFocus: true, // Prevents dismissing of toast on hover
+                style: {
+                    background: "linear-gradient(to right, #00b09b, #96c93d)",
+                },
+                onClick: function () { } // Callback after click
+            }).showToast();
+            loadData()
+        }
+    </script>
+
+</body>
+
+</html>

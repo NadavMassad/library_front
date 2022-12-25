@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nadav's Library</title>
+  <link rel="icon" type="image/x-icon" href="images/book_icon.jpg">
+  <link rel="stylesheet" href="styles/index.css">
+  <!-- Toastify -->
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+  <!-- Axios -->
+  <script src="https://unpkg.com/axios@1.1.2/dist/axios.min.js"></script>
+  <!-- Bootstrap -->
+  <!-- CSS only -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+
+
+</head>
+
+<body style="background-color: cornsilk;">
+
+  <!-- NavBar -->
+  <ul>
+    <li><a class="active" href="index.html" style="text-decoration: underline;"><img style="width: 40px; ;"
+          src="images\house2.jpg" alt="Home"></a></li>
+    <li><a href="customers.html">Customers</a></li>
+    <li><a href="books.html">Books</a></li>
+    <li><a href="loans.html">Loans</a></li>
+  </ul>
+
+  <div>
+    <div class='rules' id="rules">
+      <h2>Our Rules</h2>
+      <div>1. Strict silence, decorum and discipline must be maintained in the library. Use of cell-phones is also not
+        allowed</div>
+      <div>2. Smoking, eating, sleeping and talking loudly are strictly prohibited in the library</div>
+      <div>3. Books must be returned on time</div>
+    </div>
+    <div class='howToLoan' id="howToLoan">
+      <h2>How To Loan A Book</h2>
+      <div>1. Go to the <a style='text-decoration: none;' href="customers.html">Customers</a>' Page</div>
+      <div>2. Click on the customer that wants to loan</div>
+      <div>3. Choose the book they want loan</div>
+    </div>
+  </div>
+  <br><br><br><br><br><br><br><br>
+
+  <div>
+    <h1 style="margin-left: 1%;">Active Loans</h1>
+    <input class='searchBar' id="search" placeholder="Search By Book Name/ Customer Name" onkeyup="buildDisplay()">
+    <div class='allCards' id="loanDisplay"></div>
+  </div>
+
+  </div>
+  <div id="activeLoans"></div>
+  <script src="https://unpkg.com/axios@1.1.2/dist/axios.min.js"></script>
+  <script>
+    const MY_SERVER = 'https://library-zgvq.onrender.com/'
+    const MY_SERVER_LOANS = 'https://library-zgvq.onrender.com/loans/'
+    const MY_SERVER_CUSTOMERS = 'https://library-zgvq.onrender.com/customers/'
+    const MY_SERVER_BOOKS = 'https://library-zgvq.onrender.com/books/'
+
+
+
+
+    /////////////////////////// Build Display //////////////////////////////////////
+
+    /////////////////// Read ///////////////////////////////
+    const loadData = async () => {
+      loans = await axios.get(MY_SERVER_LOANS)
+      console.log("first")
+      activeLoans()
+    }
+
+    loadData()
+
+
+    // The filter function checks if the input in the search bar matches book name
+    // The map iterates over the new array (after the filter) and displays it after the changes (div, line breaks, etc.)
+    const activeLoans = async () => {
+      console.log("called")
+      loans = await axios.get(MY_SERVER_LOANS)
+      // Sort the loans by the date - the latest is shown first.
+      loans.data.sort(function (a, b) {
+        var keyA = new Date(a.loan_date),
+          keyB = new Date(b.loan_date);
+        // Compare the 2 dates
+        if (keyA < keyB) return -1;
+        if (keyA > keyB) return 1;
+        return 0;
+      });
+      loans.data.reverse()
+      loanDisplay.innerHTML = loans.data.filter(x => ((x.book_name.toLowerCase().includes(search.value.toLowerCase())) || (x.customer_name.toLowerCase().includes(search.value.toLowerCase()))) && x.return_date == 'Null').map(loan => `
+                <div class='loanCard' style='border: ${borderColor(loan.status)}'>
+                <div style="font-size: 30px;">${loan.book_name}</div>
+                Customer Name: <div><b>${loan.customer_name}</b></div>
+                Loan Date: <div>${loan.loan_date}</div>
+                Return Date: <div id='returnDate'>${returnNull(loan.return_date)}</div><br>
+                <div id='returnButton'>${isButton(loan)}</div>
+                </div>`).join("")
+    }
+
+
+    ///////////////////////////// Border Color ////////////////////
+
+    // Sets the color of the card depending on the loan's status
+    // if on time - green, if late- red, if pending - black
+    const borderColor = (status) => {
+      if (status == "onTime") { return '3px solid rgb(74, 236, 123)' }
+      else if (status == "Late") { return '3px solid red' }
+    }
+
+    //////////////////////////// Return Date Null /////////////////////
+    //// Checks if return_date == 'Null', if it is, show nothing.
+    //// once it changes, show the return_date
+    const returnNull = (returnDate) => {
+      console.log(returnDate)
+      if (returnDate == 'Null') {
+        return "<b>Wasn't Returned</b>"
+      }
+      else {
+        return returnDate
+      }
+    }
+
+    //////////////////////////// isButton //////////////////////
+
+    // A function to determine if the loan needs a retrun button or not
+    const isButton = (loan) => {
+      if (loan.return_date == "Null") {
+        return `<button class='btn btn-success'onclick=returnBook(${loan.id})>Return Book</button>`
+      }
+      else {
+        return `Book Returned ${loan.status}`
+      }
+    }
+
+
+
+
+    /////////////////////// Update (Return Book) ////////////////////////////// 
+
+    let loan_date = new Date(); // The Date Today init
+
+    const returnBook = async (id) => {
+            const loan_out = () => {
+            axios.put(MY_SERVER_LOANS + id, { return_date: loan_date })
+        }
+            loan_success()
+            await loan_out()
+             
+        }
+    //////////////////////////////// Toastify Messages  //////////////////////////////////////
+
+    ///////// Loan Added Successfully /////////
+    const loan_success = () => {
+      Toastify({
+        text: "Book Returned",
+        duration: 1000,
+        destination: "https://github.com/apvarun/toastify-js",
+        newWindow: true,
+        close: true,
+        gravity: "buttom", // `top` or `bottom`
+        position: "center", // `left`, `center` or `right`
+        stopOnFocus: true, // Prevents dismissing of toast on hover
+        style: {
+          background: "linear-gradient(to right, #00b09b, #96c93d)",
+        },
+        onClick: function () { } // Callback after click
+      }).showToast();
+      loadData()
+    }
+  </script>
+
+
+</body>
+
+</html>
